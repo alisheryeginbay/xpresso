@@ -2,13 +2,20 @@
 
 Xcode MCP server. Build, test, run, and manage simulators directly from Claude Code — no Xcode GUI needed.
 
-## Setup
+## Requirements
+
+- [Bun](https://bun.sh) runtime
+- Xcode with command line tools installed (`xcode-select --install`)
+
+## Install
 
 ```bash
+git clone https://github.com/alisheryeginbay/xpresso.git
+cd xpresso
 bun install
 ```
 
-### Add to Claude Code
+## Add to Claude Code
 
 Add to `~/.claude/settings.json`:
 
@@ -17,11 +24,17 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "xpresso": {
       "command": "bun",
-      "args": ["run", "/Users/YOUR_USER/Developer/xpresso/src/index.ts"]
+      "args": ["run", "/absolute/path/to/xpresso/src/index.ts"]
     }
   }
 }
 ```
+
+Replace `/absolute/path/to/xpresso` with wherever you cloned it. Then restart Claude Code.
+
+## Verify
+
+After restarting, ask Claude Code to list your simulators or schemes. It will use the `xpresso_*` tools automatically.
 
 ## Tools
 
@@ -56,3 +69,7 @@ Boot simulator and run:
 xpresso_boot_simulator(simulator: "iPhone 16")
 xpresso_run(scheme: "MyApp", workspace: "MyApp.xcworkspace", simulator: "<UDID>")
 ```
+
+## License
+
+MIT
