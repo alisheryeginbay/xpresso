@@ -12,7 +12,7 @@ import { registerLogsTool } from "./tools/logs.ts";
 
 const server = new McpServer({
   name: "xpresso",
-  version: "0.2.0",
+  version: "0.3.0",
 });
 
 // Register all tools
