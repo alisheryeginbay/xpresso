@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, type ExecFileException } from "node:child_process";
 
 export interface ExecResult {
   stdout: string;
@@ -21,7 +21,7 @@ export async function exec(
   command: string[],
   options?: { cwd?: string; timeout?: number },
 ): Promise<ExecResult> {
-  const [cmd, ...args] = command;
+  const [cmd, ...args] = command as [string, ...string[]];
   return new Promise((resolve) => {
     execFile(
       cmd,
@@ -31,7 +31,7 @@ export async function exec(
         timeout: options?.timeout,
         maxBuffer: 1024 * 1024 * 50,
       },
-      (error, stdout, stderr) => {
+      (error: ExecFileException | null, stdout: string, stderr: string) => {
         const exitCode = error?.code
           ? typeof error.code === "number"
             ? error.code
