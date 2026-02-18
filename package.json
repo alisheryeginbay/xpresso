@@ -1,13 +1,31 @@
 {
-  "name": "xpresso",
+  "name": "xpresso-mcp",
   "version": "0.1.0",
   "description": "Xcode MCP server - build, test, run, and manage simulators from Claude Code",
   "module": "src/index.ts",
   "type": "module",
-  "private": true,
+  "bin": {
+    "xpresso-mcp": "src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun --watch run src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "xcode",
+    "xcodebuild",
+    "simulator",
+    "claude",
+    "ios"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alisheryeginbay/xpresso.git"
   },
   "devDependencies": {
     "@types/bun": "latest"
