@@ -1,17 +1,18 @@
 {
   "name": "xpresso-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Xcode MCP server - build, test, run, and manage simulators from Claude Code",
-  "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "xpresso-mcp": "src/index.ts"
+    "xpresso-mcp": "dist/index.js"
   },
   "files": [
-    "src"
+    "dist"
   ],
   "scripts": {
-    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --target=node --outdir=dist --format=esm",
+    "prepublishOnly": "bun run build",
+    "start": "node dist/index.js",
     "dev": "bun --watch run src/index.ts"
   },
   "keywords": [
@@ -27,11 +28,12 @@
     "type": "git",
     "url": "https://github.com/alisheryeginbay/xpresso.git"
   },
-  "devDependencies": {
-    "@types/bun": "latest"
+  "engines": {
+    "node": ">=18"
   },
-  "peerDependencies": {
-    "typescript": "^5"
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "latest"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",

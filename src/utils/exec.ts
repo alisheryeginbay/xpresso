@@ -1,4 +1,4 @@
-import { $ } from "bun";
+import { execFile } from "node:child_process";
 
 export interface ExecResult {
   stdout: string;
@@ -21,40 +21,31 @@ export async function exec(
   command: string[],
   options?: { cwd?: string; timeout?: number },
 ): Promise<ExecResult> {
-  try {
-    const proc = Bun.spawn(command, {
-      cwd: options?.cwd,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-
-    let timer: Timer | undefined;
-    if (options?.timeout) {
-      timer = setTimeout(() => proc.kill(), options.timeout);
-    }
-
-    const [stdout, stderr] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-    ]);
-    const exitCode = await proc.exited;
-
-    if (timer) clearTimeout(timer);
-
-    return {
-      stdout: truncate(stdout),
-      stderr: truncate(stderr),
-      exitCode,
-      success: exitCode === 0,
-    };
-  } catch (error) {
-    return {
-      stdout: "",
-      stderr: error instanceof Error ? error.message : String(error),
-      exitCode: 1,
-      success: false,
-    };
-  }
+  const [cmd, ...args] = command;
+  return new Promise((resolve) => {
+    execFile(
+      cmd,
+      args,
+      {
+        cwd: options?.cwd,
+        timeout: options?.timeout,
+        maxBuffer: 1024 * 1024 * 50,
+      },
+      (error, stdout, stderr) => {
+        const exitCode = error?.code
+          ? typeof error.code === "number"
+            ? error.code
+            : 1
+          : 0;
+        resolve({
+          stdout: truncate(stdout || ""),
+          stderr: truncate(stderr || ""),
+          exitCode,
+          success: exitCode === 0,
+        });
+      },
+    );
+  });
 }
 
 /** Store for recent operation logs */

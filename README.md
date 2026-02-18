@@ -5,14 +5,14 @@ Xcode MCP server. Build, test, run, and manage simulators directly from Claude C
 ## Quick Start
 
 ```bash
-claude mcp add xpresso -- bunx xpresso-mcp
+claude mcp add xpresso -- npx xpresso-mcp
 ```
 
 That's it. Restart Claude Code and you're ready.
 
 ## Requirements
 
-- [Bun](https://bun.sh) runtime
+- Node.js >= 18 (or Bun)
 - Xcode with command line tools (`xcode-select --install`)
 
 ## Tools
