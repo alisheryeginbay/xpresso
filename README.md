@@ -4,20 +4,11 @@ Xcode MCP server. Build, test, run, and manage simulators directly from Claude C
 
 ## Quick Start
 
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "xpresso": {
-      "command": "bunx",
-      "args": ["xpresso-mcp"]
-    }
-  }
-}
+```bash
+claude mcp add xpresso -- bunx xpresso-mcp
 ```
 
-Restart Claude Code. Done.
+That's it. Restart Claude Code and you're ready.
 
 ## Requirements
 
