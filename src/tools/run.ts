@@ -170,7 +170,18 @@ async function runIOS(args: {
     }
   }
 
-  // Step 5: Launch
+  // Step 5: Terminate previous instance (if running), then launch
+  const terminateResult = await exec([
+    "xcrun",
+    "simctl",
+    "terminate",
+    args.simulator,
+    bundleId,
+  ]);
+  if (terminateResult.success) {
+    steps.push(`TERMINATE: Killed previous instance of ${bundleId}`);
+  }
+
   const launchResult = await exec([
     "xcrun",
     "simctl",
@@ -270,7 +281,15 @@ async function runMacOS(args: {
 
   const appPath = `${builtProductsMatch[1].trim()}/${targetNameMatch[1].trim()}.app`;
 
-  // Step 3: Launch with open
+  // Step 3: Terminate previous instance (if running), then launch
+  const appName = targetNameMatch[1].trim();
+  const terminateResult = await exec(["pkill", "-x", appName]);
+  if (terminateResult.success) {
+    steps.push(`TERMINATE: Killed previous instance of ${appName}`);
+    // Brief pause to let the process fully exit
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
   const launchResult = await exec(["open", appPath]);
   steps.push(`LAUNCH:\n${launchResult.stdout}`);
 
