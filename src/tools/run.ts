@@ -7,7 +7,7 @@ export function registerRunTool(server: McpServer) {
   server.registerTool("xpresso_run", {
     title: "Build & Run App",
     description:
-      "Build and run an app. For iOS: builds for simulator, installs, and launches (simulator must be booted). For macOS: builds and opens the .app directly.",
+      "Build and run an app. For iOS: builds for simulator or physical device, installs, and launches. For macOS: builds and opens the .app directly.",
     inputSchema: z.object({
       project: z.optional(z.string()).describe("Path to .xcodeproj file"),
       workspace: z.optional(z.string()).describe("Path to .xcworkspace file"),
@@ -18,7 +18,12 @@ export function registerRunTool(server: McpServer) {
       simulator: z
         .optional(z.string())
         .describe(
-          "Simulator UDID or name to install and launch on (required for iOS)",
+          "Simulator UDID or name to install and launch on (for iOS simulator)",
+        ),
+      device: z
+        .optional(z.string())
+        .describe(
+          "Physical device UDID to install and launch on (use xpresso_devices to find UDIDs)",
         ),
       configuration: z
         .optional(z.string())
@@ -32,20 +37,36 @@ export function registerRunTool(server: McpServer) {
   }, async (args) => {
     const platform = args.platform ?? "ios";
 
-    if (platform === "ios" && !args.simulator) {
+    if (platform === "macos") {
+      return runMacOS(args);
+    }
+
+    if (args.simulator && args.device) {
       return {
         content: [
           {
             type: "text" as const,
-            text: 'The "simulator" parameter is required when platform is "ios".',
+            text: 'Provide either "simulator" or "device", not both.',
           },
         ],
         isError: true,
       };
     }
 
-    if (platform === "macos") {
-      return runMacOS(args);
+    if (!args.simulator && !args.device) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: 'Either "simulator" or "device" parameter is required when platform is "ios".',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    if (args.device) {
+      return runIOSDevice(args as typeof args & { device: string });
     }
     return runIOS(args as typeof args & { simulator: string });
   });
@@ -200,6 +221,164 @@ async function runIOS(args: {
         type: "text" as const,
         text: launchResult.success
           ? `App launched successfully (${bundleId} on ${args.simulator}).\n\n${output}`
+          : `Launch failed.\n\n${output}\n\nSTDERR:\n${launchResult.stderr}`,
+      },
+    ],
+    isError: !launchResult.success,
+  };
+}
+
+async function runIOSDevice(args: {
+  project?: string;
+  workspace?: string;
+  scheme: string;
+  device: string;
+  configuration?: string;
+  bundleId?: string;
+}) {
+  const steps: string[] = [];
+
+  // Step 1: Build for physical device
+  const destination = `platform=iOS,id=${args.device}`;
+  const buildArgs = [
+    "xcodebuild",
+    ...buildXcodebuildArgs({
+      project: args.project,
+      workspace: args.workspace,
+      scheme: args.scheme,
+      destination,
+      configuration: args.configuration,
+    }),
+    "build",
+  ];
+
+  const buildResult = await exec(buildArgs, { timeout: 600_000 });
+  steps.push(`BUILD:\n${buildResult.stdout}`);
+  if (!buildResult.success) {
+    const output = steps.join("\n\n");
+    storeLog("run", output);
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Build failed (exit code ${buildResult.exitCode}).\n\n${output}\n\nSTDERR:\n${buildResult.stderr}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  // Step 2: Get bundle ID from build settings if not provided
+  let bundleId = args.bundleId;
+  const settingsArgs = [
+    "xcodebuild",
+    ...buildXcodebuildArgs({
+      project: args.project,
+      workspace: args.workspace,
+      scheme: args.scheme,
+      destination,
+    }),
+    "-showBuildSettings",
+  ];
+  const settings = await exec(settingsArgs, { timeout: 30_000 });
+
+  if (!bundleId) {
+    const match = settings.stdout.match(
+      /PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.+)/,
+    );
+    bundleId = match?.[1]?.trim();
+    if (!bundleId) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Build succeeded but could not determine bundle identifier. Provide bundleId parameter.",
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  // Step 3: Find the .app in derived data
+  const builtProductsMatch = settings.stdout.match(
+    /BUILT_PRODUCTS_DIR\s*=\s*(.+)/,
+  );
+  const targetNameMatch = settings.stdout.match(
+    /TARGET_NAME\s*=\s*(.+)/,
+  );
+  const appPath =
+    builtProductsMatch?.[1] && targetNameMatch?.[1]
+      ? `${builtProductsMatch[1].trim()}/${targetNameMatch[1].trim()}.app`
+      : undefined;
+
+  // Step 4: Install on physical device
+  if (appPath) {
+    const installResult = await exec(
+      [
+        "xcrun",
+        "devicectl",
+        "device",
+        "install",
+        "app",
+        "--device",
+        args.device,
+        appPath,
+      ],
+      { timeout: 120_000 },
+    );
+    steps.push(`INSTALL:\n${installResult.stdout}`);
+    if (!installResult.success) {
+      const output = steps.join("\n\n");
+      storeLog("run", output);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Install failed.\n\n${output}\n\nSTDERR:\n${installResult.stderr}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  // Step 5: Terminate previous instance (if running), then launch
+  const terminateResult = await exec([
+    "xcrun",
+    "devicectl",
+    "device",
+    "process",
+    "terminate",
+    "--device",
+    args.device,
+    bundleId,
+  ]);
+  if (terminateResult.success) {
+    steps.push(`TERMINATE: Killed previous instance of ${bundleId}`);
+  }
+
+  const launchResult = await exec([
+    "xcrun",
+    "devicectl",
+    "device",
+    "process",
+    "launch",
+    "--device",
+    args.device,
+    bundleId,
+  ]);
+  steps.push(`LAUNCH:\n${launchResult.stdout}`);
+
+  const output = steps.join("\n\n");
+  storeLog("run", output);
+
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: launchResult.success
+          ? `App launched successfully (${bundleId} on device ${args.device}).\n\n${output}`
           : `Launch failed.\n\n${output}\n\nSTDERR:\n${launchResult.stderr}`,
       },
     ],
