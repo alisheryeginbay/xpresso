@@ -80,9 +80,27 @@ export function summarizeOutput(stdout: string, stderr: string, success: boolean
     }
   }
 
+  // Deduplicate: strip file paths/line numbers to find unique messages
+  const dedup = (items: string[], max: number) => {
+    const unique: string[] = [];
+    const seen = new Set<string>();
+    for (const item of items) {
+      // Normalize: remove path prefix and line/column numbers for dedup key
+      const key = item.replace(/^.*?:\d+:\d+:\s*/, "").replace(/^.*?:\s*(error|warning):\s*/i, "");
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(item);
+      }
+    }
+    const shown = unique.slice(0, max);
+    const omitted = unique.length - shown.length;
+    if (omitted > 0) shown.push(`... and ${omitted} more unique (${items.length} total)`);
+    return shown;
+  };
+
   const parts: string[] = [];
-  if (errors.length) parts.push(`Errors (${errors.length}):\n${errors.join("\n")}`);
-  if (warnings.length) parts.push(`Warnings (${warnings.length}):\n${warnings.join("\n")}`);
+  if (errors.length) parts.push(`Errors (${errors.length}):\n${dedup(errors, 20).join("\n")}`);
+  if (warnings.length) parts.push(`Warnings (${warnings.length}):\n${dedup(warnings, 10).join("\n")}`);
   if (testLines.length) parts.push(testLines.join("\n"));
   if (summaryLines.length) parts.push(summaryLines.join("\n"));
 
