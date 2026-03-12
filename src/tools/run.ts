@@ -127,7 +127,7 @@ async function runIOS(args: {
     ];
     const settingsResult = await exec(settingsArgs, { timeout: 30_000 });
     const match = settingsResult.stdout.match(
-      /PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.+)/,
+      /^\s+PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.+)/m,
     );
     bundleId = match?.[1]?.trim();
     if (!bundleId) {
@@ -284,7 +284,7 @@ async function runIOSDevice(args: {
 
   if (!bundleId) {
     const match = settings.stdout.match(
-      /PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.+)/,
+      /^\s+PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.+)/m,
     );
     bundleId = match?.[1]?.trim();
     if (!bundleId) {
@@ -343,27 +343,15 @@ async function runIOSDevice(args: {
     }
   }
 
-  // Step 5: Terminate previous instance (if running), then launch
-  const terminateResult = await exec([
-    "xcrun",
-    "devicectl",
-    "device",
-    "process",
-    "terminate",
-    "--device",
-    args.device,
-    bundleId,
-  ]);
-  if (terminateResult.success) {
-    steps.push(`TERMINATE: Killed previous instance of ${bundleId}`);
-  }
-
+  // Step 5: Launch (devicectl terminate requires --pid which we don't have,
+  // so we use --terminate-existing on launch to kill any previous instance)
   const launchResult = await exec([
     "xcrun",
     "devicectl",
     "device",
     "process",
     "launch",
+    "--terminate-existing",
     "--device",
     args.device,
     bundleId,
