@@ -127,9 +127,9 @@ async function runIOS(args: {
     ];
     const settingsResult = await exec(settingsArgs, { timeout: 30_000 });
     const match = settingsResult.stdout.match(
-      /^\s+PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.+)/m,
+      /^\s+PRODUCT_BUNDLE_IDENTIFIER\s*=\s*([\w-]+(?:\.[\w-]+)+)/m,
     );
-    bundleId = match?.[1]?.trim();
+    bundleId = match?.[1];
     if (!bundleId) {
       return {
         content: [
@@ -284,9 +284,9 @@ async function runIOSDevice(args: {
 
   if (!bundleId) {
     const match = settings.stdout.match(
-      /^\s+PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.+)/m,
+      /^\s+PRODUCT_BUNDLE_IDENTIFIER\s*=\s*([\w-]+(?:\.[\w-]+)+)/m,
     );
-    bundleId = match?.[1]?.trim();
+    bundleId = match?.[1];
     if (!bundleId) {
       return {
         content: [
