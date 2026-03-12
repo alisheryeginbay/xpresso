@@ -7,7 +7,7 @@ export function registerBuildTool(server: McpServer) {
   server.registerTool("xpresso_build", {
     title: "Build Xcode Project",
     description:
-      "Build an Xcode project or workspace with the specified scheme. Returns build output including warnings and errors.",
+      "Compile an Xcode project or workspace (build only — does NOT install or launch the app). Use xpresso_run instead if you want to run the app.",
     inputSchema: z.object({
       project: z
         .optional(z.string())

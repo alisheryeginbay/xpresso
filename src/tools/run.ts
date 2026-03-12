@@ -7,7 +7,7 @@ export function registerRunTool(server: McpServer) {
   server.registerTool("xpresso_run", {
     title: "Build & Run App",
     description:
-      "Build and run an app. For iOS: builds for simulator or physical device, installs, and launches. For macOS: builds and opens the .app directly.",
+      "Build, install, and launch an app. Use this when asked to 'run' or 'launch' an app. For iOS: builds for simulator or physical device, installs, and launches. For macOS: builds and opens the .app directly.",
     inputSchema: z.object({
       project: z.optional(z.string()).describe("Path to .xcodeproj file"),
       workspace: z.optional(z.string()).describe("Path to .xcworkspace file"),
