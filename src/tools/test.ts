@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { exec, storeLog } from "../utils/exec.ts";
+import { exec, storeLog, summarizeOutput } from "../utils/exec.ts";
 import { buildXcodebuildArgs } from "../utils/xcode.ts";
 
 export function registerTestTool(server: McpServer) {
@@ -56,16 +56,17 @@ export function registerTestTool(server: McpServer) {
     if (args.extraArgs) xcodebuildArgs.push(...args.extraArgs);
 
     const result = await exec(xcodebuildArgs, { timeout: 900_000 });
-    const output = result.stdout + (result.stderr ? `\n\nSTDERR:\n${result.stderr}` : "");
-    storeLog("test", output);
+    const fullOutput = result.stdout + (result.stderr ? `\n\nSTDERR:\n${result.stderr}` : "");
+    storeLog("test", fullOutput);
+    const summary = summarizeOutput(result.stdout, result.stderr, result.success);
 
     return {
       content: [
         {
           type: "text" as const,
           text: result.success
-            ? `Tests passed.\n\n${output}`
-            : `Tests failed (exit code ${result.exitCode}).\n\n${output}`,
+            ? `Tests passed.\n\n${summary}`
+            : `Tests failed (exit code ${result.exitCode}).\n\n${summary}`,
         },
       ],
       isError: !result.success,

@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { exec, storeLog } from "../utils/exec.ts";
+import { exec, storeLog, summarizeOutput } from "../utils/exec.ts";
 import { buildXcodebuildArgs } from "../utils/xcode.ts";
 
 export function registerCleanTool(server: McpServer) {
@@ -29,16 +29,17 @@ export function registerCleanTool(server: McpServer) {
     ];
 
     const result = await exec(cmdArgs, { timeout: 120_000 });
-    const output = result.stdout + (result.stderr ? `\n\nSTDERR:\n${result.stderr}` : "");
-    storeLog("clean", output);
+    const fullOutput = result.stdout + (result.stderr ? `\n\nSTDERR:\n${result.stderr}` : "");
+    storeLog("clean", fullOutput);
+    const summary = summarizeOutput(result.stdout, result.stderr, result.success);
 
     return {
       content: [
         {
           type: "text" as const,
           text: result.success
-            ? `Clean succeeded.\n\n${output}`
-            : `Clean failed (exit code ${result.exitCode}).\n\n${output}`,
+            ? `Clean succeeded.\n\n${summary}`
+            : `Clean failed (exit code ${result.exitCode}).\n\n${summary}`,
         },
       ],
       isError: !result.success,

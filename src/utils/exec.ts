@@ -48,6 +48,50 @@ export async function exec(
   });
 }
 
+/** Summarize xcodebuild output to only actionable info */
+export function summarizeOutput(stdout: string, stderr: string, success: boolean): string {
+  const lines = stdout.split("\n");
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const testLines: string[] = [];
+  const summaryLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (/:\s*error:/i.test(line) || /^error:/i.test(trimmed)) {
+      errors.push(trimmed);
+    } else if (/:\s*warning:/i.test(line)) {
+      warnings.push(trimmed);
+    } else if (/^\*\*\s/.test(trimmed)) {
+      summaryLines.push(trimmed);
+    } else if (/^(Test Case|Test Suite|Executed \d)/.test(trimmed)) {
+      testLines.push(trimmed);
+    }
+  }
+
+  // On failure with no extracted errors, include stderr or last 30 lines of stdout
+  if (!success && errors.length === 0) {
+    if (stderr.trim()) {
+      errors.push(stderr.trim());
+    } else {
+      const tail = lines.slice(-30).join("\n").trim();
+      if (tail) errors.push(tail);
+    }
+  }
+
+  const parts: string[] = [];
+  if (errors.length) parts.push(`Errors (${errors.length}):\n${errors.join("\n")}`);
+  if (warnings.length) parts.push(`Warnings (${warnings.length}):\n${warnings.join("\n")}`);
+  if (testLines.length) parts.push(testLines.join("\n"));
+  if (summaryLines.length) parts.push(summaryLines.join("\n"));
+
+  if (!parts.length) return "No issues.";
+
+  parts.push("(Full log available via xpresso_logs)");
+  return parts.join("\n\n");
+}
+
 /** Store for recent operation logs */
 const logStore = new Map<string, string>();
 

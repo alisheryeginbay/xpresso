@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { exec, storeLog } from "../utils/exec.ts";
+import { exec, storeLog, summarizeOutput } from "../utils/exec.ts";
 import { buildXcodebuildArgs } from "../utils/xcode.ts";
 
 export function registerRunTool(server: McpServer) {
@@ -97,15 +97,15 @@ async function runIOS(args: {
   ];
 
   const buildResult = await exec(buildArgs, { timeout: 600_000 });
+  const buildSummary = summarizeOutput(buildResult.stdout, buildResult.stderr, buildResult.success);
   steps.push(`BUILD:\n${buildResult.stdout}`);
   if (!buildResult.success) {
-    const output = steps.join("\n\n");
-    storeLog("run", output);
+    storeLog("run", steps.join("\n\n"));
     return {
       content: [
         {
           type: "text" as const,
-          text: `Build failed (exit code ${buildResult.exitCode}).\n\n${output}\n\nSTDERR:\n${buildResult.stderr}`,
+          text: `Build failed (exit code ${buildResult.exitCode}).\n\n${buildSummary}`,
         },
       ],
       isError: true,
@@ -177,13 +177,12 @@ async function runIOS(args: {
     ]);
     steps.push(`INSTALL:\n${installResult.stdout}`);
     if (!installResult.success) {
-      const output = steps.join("\n\n");
-      storeLog("run", output);
+      storeLog("run", steps.join("\n\n"));
       return {
         content: [
           {
             type: "text" as const,
-            text: `Install failed.\n\n${output}\n\nSTDERR:\n${installResult.stderr}`,
+            text: `Install failed.\n\nSTDERR:\n${installResult.stderr}`,
           },
         ],
         isError: true,
@@ -211,17 +210,18 @@ async function runIOS(args: {
     bundleId,
   ]);
   steps.push(`LAUNCH:\n${launchResult.stdout}`);
+  storeLog("run", steps.join("\n\n"));
 
-  const output = steps.join("\n\n");
-  storeLog("run", output);
+  const summaryParts = [buildSummary];
+  if (launchResult.stdout.trim()) summaryParts.push(launchResult.stdout.trim());
 
   return {
     content: [
       {
         type: "text" as const,
         text: launchResult.success
-          ? `App launched successfully (${bundleId} on ${args.simulator}).\n\n${output}`
-          : `Launch failed.\n\n${output}\n\nSTDERR:\n${launchResult.stderr}`,
+          ? `App launched successfully (${bundleId} on ${args.simulator}).\n\n${summaryParts.join("\n\n")}`
+          : `Launch failed.\n\n${summaryParts.join("\n\n")}\n\nSTDERR:\n${launchResult.stderr}`,
       },
     ],
     isError: !launchResult.success,
@@ -253,15 +253,15 @@ async function runIOSDevice(args: {
   ];
 
   const buildResult = await exec(buildArgs, { timeout: 600_000 });
+  const buildSummary = summarizeOutput(buildResult.stdout, buildResult.stderr, buildResult.success);
   steps.push(`BUILD:\n${buildResult.stdout}`);
   if (!buildResult.success) {
-    const output = steps.join("\n\n");
-    storeLog("run", output);
+    storeLog("run", steps.join("\n\n"));
     return {
       content: [
         {
           type: "text" as const,
-          text: `Build failed (exit code ${buildResult.exitCode}).\n\n${output}\n\nSTDERR:\n${buildResult.stderr}`,
+          text: `Build failed (exit code ${buildResult.exitCode}).\n\n${buildSummary}`,
         },
       ],
       isError: true,
@@ -329,13 +329,12 @@ async function runIOSDevice(args: {
     );
     steps.push(`INSTALL:\n${installResult.stdout}`);
     if (!installResult.success) {
-      const output = steps.join("\n\n");
-      storeLog("run", output);
+      storeLog("run", steps.join("\n\n"));
       return {
         content: [
           {
             type: "text" as const,
-            text: `Install failed.\n\n${output}\n\nSTDERR:\n${installResult.stderr}`,
+            text: `Install failed.\n\nSTDERR:\n${installResult.stderr}`,
           },
         ],
         isError: true,
@@ -357,17 +356,18 @@ async function runIOSDevice(args: {
     bundleId,
   ]);
   steps.push(`LAUNCH:\n${launchResult.stdout}`);
+  storeLog("run", steps.join("\n\n"));
 
-  const output = steps.join("\n\n");
-  storeLog("run", output);
+  const summaryParts = [buildSummary];
+  if (launchResult.stdout.trim()) summaryParts.push(launchResult.stdout.trim());
 
   return {
     content: [
       {
         type: "text" as const,
         text: launchResult.success
-          ? `App launched successfully (${bundleId} on device ${args.device}).\n\n${output}`
-          : `Launch failed.\n\n${output}\n\nSTDERR:\n${launchResult.stderr}`,
+          ? `App launched successfully (${bundleId} on device ${args.device}).\n\n${summaryParts.join("\n\n")}`
+          : `Launch failed.\n\n${summaryParts.join("\n\n")}\n\nSTDERR:\n${launchResult.stderr}`,
       },
     ],
     isError: !launchResult.success,
@@ -398,15 +398,15 @@ async function runMacOS(args: {
   ];
 
   const buildResult = await exec(buildArgs, { timeout: 600_000 });
+  const buildSummary = summarizeOutput(buildResult.stdout, buildResult.stderr, buildResult.success);
   steps.push(`BUILD:\n${buildResult.stdout}`);
   if (!buildResult.success) {
-    const output = steps.join("\n\n");
-    storeLog("run", output);
+    storeLog("run", steps.join("\n\n"));
     return {
       content: [
         {
           type: "text" as const,
-          text: `Build failed (exit code ${buildResult.exitCode}).\n\n${output}\n\nSTDERR:\n${buildResult.stderr}`,
+          text: `Build failed (exit code ${buildResult.exitCode}).\n\n${buildSummary}`,
         },
       ],
       isError: true,
@@ -433,13 +433,12 @@ async function runMacOS(args: {
   );
 
   if (!builtProductsMatch?.[1] || !targetNameMatch?.[1]) {
-    const output = steps.join("\n\n");
-    storeLog("run", output);
+    storeLog("run", steps.join("\n\n"));
     return {
       content: [
         {
           type: "text" as const,
-          text: `Build succeeded but could not determine app path from build settings.\n\n${output}`,
+          text: `Build succeeded but could not determine app path from build settings.`,
         },
       ],
       isError: true,
@@ -459,17 +458,15 @@ async function runMacOS(args: {
 
   const launchResult = await exec(["open", appPath]);
   steps.push(`LAUNCH:\n${launchResult.stdout}`);
-
-  const output = steps.join("\n\n");
-  storeLog("run", output);
+  storeLog("run", steps.join("\n\n"));
 
   return {
     content: [
       {
         type: "text" as const,
         text: launchResult.success
-          ? `App launched successfully (${appPath}).\n\n${output}`
-          : `Launch failed.\n\n${output}\n\nSTDERR:\n${launchResult.stderr}`,
+          ? `App launched successfully (${appPath}).\n\n${buildSummary}`
+          : `Launch failed.\n\n${buildSummary}\n\nSTDERR:\n${launchResult.stderr}`,
       },
     ],
     isError: !launchResult.success,

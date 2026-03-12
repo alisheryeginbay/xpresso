@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { exec, storeLog } from "../utils/exec.ts";
+import { exec, storeLog, summarizeOutput } from "../utils/exec.ts";
 import { buildXcodebuildArgs } from "../utils/xcode.ts";
 
 export function registerBuildTool(server: McpServer) {
@@ -42,16 +42,17 @@ export function registerBuildTool(server: McpServer) {
     ];
 
     const result = await exec(xcodebuildArgs, { timeout: 600_000 });
-    const output = result.stdout + (result.stderr ? `\n\nSTDERR:\n${result.stderr}` : "");
-    storeLog("build", output);
+    const fullOutput = result.stdout + (result.stderr ? `\n\nSTDERR:\n${result.stderr}` : "");
+    storeLog("build", fullOutput);
+    const summary = summarizeOutput(result.stdout, result.stderr, result.success);
 
     return {
       content: [
         {
           type: "text" as const,
           text: result.success
-            ? `Build succeeded.\n\n${output}`
-            : `Build failed (exit code ${result.exitCode}).\n\n${output}`,
+            ? `Build succeeded.\n\n${summary}`
+            : `Build failed (exit code ${result.exitCode}).\n\n${summary}`,
         },
       ],
       isError: !result.success,
