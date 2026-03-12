@@ -1,6 +1,6 @@
 {
   "name": "xpresso-mcp",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Xcode MCP server - build, test, run, and manage simulators from Claude Code",
   "type": "module",
   "bin": {
