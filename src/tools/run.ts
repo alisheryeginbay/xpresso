@@ -122,6 +122,7 @@ async function runIOS(args: {
         workspace: args.workspace,
         scheme: args.scheme,
         destination,
+        configuration: args.configuration,
       }),
       "-showBuildSettings",
     ];
@@ -151,6 +152,7 @@ async function runIOS(args: {
       workspace: args.workspace,
       scheme: args.scheme,
       destination,
+      configuration: args.configuration,
     }),
     "-showBuildSettings",
   ];
@@ -277,6 +279,7 @@ async function runIOSDevice(args: {
       workspace: args.workspace,
       scheme: args.scheme,
       destination,
+      configuration: args.configuration,
     }),
     "-showBuildSettings",
   ];
@@ -421,6 +424,7 @@ async function runMacOS(args: {
       workspace: args.workspace,
       scheme: args.scheme,
       destination,
+      configuration: args.configuration,
     }),
     "-showBuildSettings",
   ];
